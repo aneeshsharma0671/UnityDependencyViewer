@@ -9,4 +9,9 @@ public class Check2 : MonoBehaviour
         Debug.Log("Check2");
         check1.Check();
     }
+
+    public static void CheckStatic()
+    {
+        Debug.Log("Check2");
+    }
 }

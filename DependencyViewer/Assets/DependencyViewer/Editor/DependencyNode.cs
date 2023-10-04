@@ -4,5 +4,6 @@ using UnityEngine;
 namespace DependencyViewer{
     public class DependencyNode : Node{
         public String GUID;
+        public Type type;
     }
 }
