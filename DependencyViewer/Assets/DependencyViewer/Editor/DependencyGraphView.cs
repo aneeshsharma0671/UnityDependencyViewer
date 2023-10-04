@@ -21,7 +21,7 @@ namespace DependencyViewer{
 
         List<DependencyNode> GetNodes(){
             List<DependencyNode> nodes = new List<DependencyNode>();
-            var AllScrpits = AssetDatabase.FindAssets("t:prefab", new string[]{"Assets"});
+            var AllScrpits = AssetDatabase.FindAssets("t:Script", new string[]{"Assets"});
             int i = 0;
             foreach (var guid in AllScrpits){
                 string path = AssetDatabase.GUIDToAssetPath(guid);
@@ -54,6 +54,27 @@ namespace DependencyViewer{
                 }
             }
 
+            // Position Nodes
+            int loner = 0;
+            int outputOnly = 0;
+            int inputOnly = 0;
+            int both = 0;
+            foreach(var node in _nodes){
+                if(node.Value.inputContainer.childCount == 0 && node.Value.outputContainer.childCount == 0){
+                    node.Value.SetPosition(new Rect(200 * 0, 100 * loner, 100, 150));
+                    loner++;
+                }else if(node.Value.inputContainer.childCount == 0){
+                    node.Value.SetPosition(new Rect(200 * 1, 100 * outputOnly, 100, 150));
+                    outputOnly++;
+                }else if(node.Value.outputContainer.childCount == 0){
+                    node.Value.SetPosition(new Rect(200 * 3, 100 * inputOnly, 100, 150));
+                    inputOnly++;
+                }else{
+                    node.Value.SetPosition(new Rect(200 * 2, 100 * both, 100, 150));
+                    both++;
+                }
+            }
+
             return nodes;
         }
         
@@ -61,8 +82,12 @@ namespace DependencyViewer{
             return node.InstantiatePort(Orientation.Horizontal, portDirection, capacity, typeof(float));
         }
 
+        private List<Type> types = new List<Type>();
         private string[] GetDependencies(string path, bool recursive = false){
-            return AssetDatabase.GetDependencies(path, false);  // recursive false to remove self Dependency
+            // Get Script Dependencies
+            var script = AssetDatabase.LoadAssetAtPath<MonoScript>(path);
+        
+            return AssetDatabase.GetDependencies(path, recursive);  // recursive false to remove self Dependency
         }
 
     }
