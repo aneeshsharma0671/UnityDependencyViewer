@@ -12,8 +12,8 @@ namespace DependencyViewer{
     public class DependencyGraphView : GraphView{
         Dictionary<string, Node> _nodes = new();
         Dictionary<Type,string> scriptPaths = new(); // Type, Path
-        Dictionary<Type,FieldInfo[]> scriptFieldInfo = new(); 
-        Dictionary<Node,List<Node>> edges = new();
+        Dictionary<Type,Type[]> scriptFieldTypes = new(); 
+        Dictionary<Node,List<Node>> edgesDic = new();
         public DependencyGraphView(){
             this.AddManipulator(new ContentDragger());
             this.AddManipulator(new SelectionDragger());
@@ -36,9 +36,16 @@ namespace DependencyViewer{
                 if(scriptPaths.ContainsKey(scriptClass)){
                     continue;
                 }
+                List<Type> typeRefs = new();
                 FieldInfo[] fields = scriptClass.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static);
+                MethodInfo[] typeMethods = scriptClass.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static);
+                
+                foreach(var field in fields){ typeRefs.Add(field.FieldType); }
+                foreach(var typeMethod in typeMethods){ typeRefs.Add(typeMethod.ReturnType); }
+
                 scriptPaths.Add(scriptClass, path);
-                scriptFieldInfo.Add(scriptClass, fields);
+
+                scriptFieldTypes.Add(scriptClass,typeRefs.ToArray());
                 name = path.Split('/')[^1];
                 var node = new DependencyNode(){
                     title = name,
@@ -90,7 +97,7 @@ namespace DependencyViewer{
         }
 
         private Edge GenerateEdge(Node sourceNode, Node targetNode){
-            if(edges.ContainsKey(sourceNode) && edges[sourceNode].Contains(targetNode)){
+            if(edgesDic.ContainsKey(sourceNode) && edgesDic[sourceNode].Contains(targetNode)){
                 return null;
             }
             var port = GeneratePort(sourceNode, Direction.Output);
@@ -103,33 +110,33 @@ namespace DependencyViewer{
             sourceNode.RefreshPorts();
             targetNode.RefreshExpandedState();
             targetNode.RefreshPorts();
-            if(edges.ContainsKey(sourceNode)){
-                edges[sourceNode].Add(targetNode);
+            if(edgesDic.ContainsKey(sourceNode)){
+                edgesDic[sourceNode].Add(targetNode);
             }
             else{
-                edges.Add(sourceNode, new List<Node>(){targetNode});
+                edgesDic.Add(sourceNode, new List<Node>(){targetNode});
             }
             return edge;
         }
         private string[] GetDependencies(Type type, bool recursive = false){
             List<string> dependencies = new List<string>();
-            if(scriptFieldInfo.ContainsKey(type)){
+            if(scriptFieldTypes.ContainsKey(type)){
                 Debug.Log($"Type: {type}");
-                foreach(var field in scriptFieldInfo[type]){
-                    if(field.FieldType.IsGenericType){
-                        Type type1 = field.FieldType.GetGenericArguments()[0];
+                foreach(var field in scriptFieldTypes[type]){
+                    if(field.IsGenericType){
+                        Type type1 = field.GetGenericArguments()[0];
                         Debug.Log($"Type1: {type1}");
                         if(scriptPaths.ContainsKey(type1)){
                             dependencies.Add(scriptPaths[type1]);
                         }
-                    }else if(field.FieldType.IsArray){
-                        Type type1 = field.FieldType.GetElementType();
+                    }else if(field.IsArray){
+                        Type type1 = field.GetElementType();
                         Debug.Log($"Type1: {type1}");
                         if(scriptPaths.ContainsKey(type1)){
                             dependencies.Add(scriptPaths[type1]);
                         }
                     }else{
-                        Type type1 = field.FieldType;
+                        Type type1 = field;
                         Debug.Log($"Type1: {type1}");
                         if(scriptPaths.ContainsKey(type1)){
                             dependencies.Add(scriptPaths[type1]);
@@ -137,7 +144,6 @@ namespace DependencyViewer{
                     }
                 }
             }
-
             return dependencies.ToArray() ;  // recursive false to remove self Dependency
         }
 
